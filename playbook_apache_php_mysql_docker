@@ -1,0 +1,50 @@
+- name: install and start apache2
+  hosts: webservers
+  remote_user: ninja
+  become: yes
+
+  tasks:
+  - name: update apt
+    command: apt update
+
+  - name: install web stuff and docker part 1
+    apt: name={{item}} state=present
+    with_items:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+    - apache2
+    - mysql-server
+    - php7.2
+
+  - name: install docker part 2
+    shell: "{{item}}"
+    with_items:
+    - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null  
+    - apt update   
+   
+  - name: install docker part 3
+    apt: name={{item}} state=present
+    with_items:
+    - docker-ce 
+    - docker-ce-cli 
+    - containerd.io
+
+  - name: restart apache2
+    shell: systemctl restart apache2
+
+  - name: test to see if all above are running
+    shell: "{{item}}"
+    register: result
+    with_items:
+    - "systemctl status apache2"
+    - "systemctl status mysql"
+    - "php -v"
+    - "systemctl status docker"
+ 
+  - name: see results
+    debug:
+      var: result
